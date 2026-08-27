@@ -1,0 +1,44 @@
+{
+  "date": "2022-08-19",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "45U"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "45U"
+    ],
+    "line_ids": [
+      "BXD1",
+      "DXWB",
+      "WAPV",
+      "K4DL",
+      "EXR6",
+      "PM50",
+      "HDS4",
+      "HGX4",
+      "AXS1",
+      "LC91",
+      "XXPF"
+    ],
+    "confidence": "high",
+    "score": 0.984,
+    "margin": 0.498,
+    "ang": 741,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      5,
+      20
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

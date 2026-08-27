@@ -1,0 +1,19 @@
+{
+  "name": "hazur-sahib-hukamnama-archive",
+  "version": "0.1.0",
+  "description": "Daily Hukamnama from Takht Sachkhand Sri Hazur Sahib, Nanded, resolved to Shabad OS shabad IDs.",
+  "license": "MIT",
+  "private": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "fetch": "node bin/fetch-today.js",
+    "test": "node test/resolve.test.js && node test/bench.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "cheerio": "^1.2.0",
+    "gurmukhi-utils": "^3.2.2"
+  }
+}

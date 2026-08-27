@@ -1,0 +1,42 @@
+{
+  "date": "2022-01-20",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "AR8"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "AR8"
+    ],
+    "line_ids": [
+      "X0D2",
+      "EZWH",
+      "FZDR",
+      "F65N",
+      "H9H7",
+      "01XV",
+      "GH5L",
+      "F7XM",
+      "YJAP",
+      "90RQ"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.527,
+    "ang": 1178,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      3
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

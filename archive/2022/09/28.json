@@ -1,0 +1,36 @@
+{
+  "date": "2022-09-28",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "2BG"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "2BG"
+    ],
+    "line_ids": [
+      "PYEK",
+      "J7BB",
+      "ENA9",
+      "N2DA",
+      "33B2",
+      "NMDB"
+    ],
+    "confidence": "high",
+    "score": 0.992,
+    "margin": 0.565,
+    "ang": 701,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      9
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

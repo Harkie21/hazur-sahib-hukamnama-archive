@@ -1,0 +1,60 @@
+{
+  "date": "2024-03-03",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "MLA"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "MLA"
+    ],
+    "line_ids": [
+      "25LP",
+      "KK4V",
+      "ZTV7",
+      "EUS9",
+      "DZAT",
+      "KYHN",
+      "JL4A",
+      "1Y10",
+      "TV08",
+      "8DBD"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.503,
+    "ang": 1171,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      12
+    ]
+  },
+  "dsg": {
+    "shabad_ids": [
+      "86K"
+    ],
+    "line_ids": [
+      "0GXN",
+      "V0NH",
+      "TUNC",
+      "DYP2"
+    ],
+    "confidence": "high",
+    "score": 0.965,
+    "margin": 0.518,
+    "ang": 327,
+    "ang_delta": -21,
+    "counters": [
+      544
+    ]
+  },
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

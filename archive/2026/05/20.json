@@ -1,0 +1,53 @@
+{
+  "date": "2026-05-20",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "BJJ"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "BJJ"
+    ],
+    "line_ids": [
+      "MFJM",
+      "FSV2",
+      "M552",
+      "M0A3",
+      "WL40",
+      "CF97"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.542,
+    "ang": 715,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      2,
+      18
+    ]
+  },
+  "dsg": {
+    "shabad_ids": [
+      "KYM"
+    ],
+    "line_ids": [
+      "16KQ",
+      "5A3P",
+      "CQ39",
+      "S7C4"
+    ],
+    "confidence": "high",
+    "score": 0.891,
+    "margin": 0.434,
+    "ang": 503,
+    "ang_delta": 9,
+    "counters": [
+      1968
+    ]
+  },
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

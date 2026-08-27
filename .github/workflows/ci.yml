@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+    paths: [ 'lib/**', 'bin/**', 'test/**', 'package.json', '.github/workflows/**' ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save @shabados/database@4.8.7
+      - name: Test
+        env:
+          SHABADOS_DB: node_modules/@shabados/database/build/database.sqlite
+        run: npm test

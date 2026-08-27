@@ -1,0 +1,50 @@
+{
+  "date": "2022-08-10",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "FLY"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "FLY"
+    ],
+    "line_ids": [
+      "RAPU",
+      "X23D",
+      "7SNV",
+      "X39F",
+      "BWPZ",
+      "671F",
+      "XZ95",
+      "SLUL",
+      "MAT6",
+      "2YVH",
+      "CW9F",
+      "BWG5",
+      "V2ZV",
+      "J6SQ",
+      "4TQX",
+      "JWU0",
+      "1S8N",
+      "30SZ"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.419,
+    "ang": 623,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      57
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

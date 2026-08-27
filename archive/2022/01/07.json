@@ -1,0 +1,35 @@
+{
+  "date": "2022-01-07",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "8PP"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "8PP"
+    ],
+    "line_ids": [
+      "Q3RK",
+      "3QQ9",
+      "SUBV",
+      "CVLP",
+      "ZSXN",
+      "1PJS"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.549,
+    "ang": 674,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

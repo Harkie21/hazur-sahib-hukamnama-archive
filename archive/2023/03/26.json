@@ -1,0 +1,36 @@
+{
+  "date": "2023-03-26",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "4R9"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "4R9"
+    ],
+    "line_ids": [
+      "LBTK",
+      "JU7X",
+      "XDA0",
+      "LJ7C",
+      "PH8S",
+      "AUFR"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.405,
+    "ang": 684,
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      58
+    ]
+  },
+  "dsg": null,
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

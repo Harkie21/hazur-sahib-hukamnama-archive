@@ -1,0 +1,29 @@
+{
+  "date": "2024-02-11",
+  "source": "hazur_sahib",
+  "shabad_ids": [],
+  "sggs": null,
+  "dsg": {
+    "shabad_ids": [
+      "UVJ"
+    ],
+    "line_ids": [
+      "NBWH",
+      "MZSU",
+      "ZXTM",
+      "NTJF"
+    ],
+    "confidence": "high",
+    "score": 0.977,
+    "margin": 0.485,
+    "ang": 331,
+    "ang_delta": -18,
+    "counters": [
+      575
+    ]
+  },
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  }
+}

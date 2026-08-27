@@ -1,0 +1,10 @@
+node_modules/
+*.sqlite
+*.tgz
+.DS_Store
+cache/
+harvest-results.jsonl
+analysis*.txt
+log*.txt
+debug-response.txt
+backfill_results.txt
