@@ -8,26 +8,56 @@
     "shabad_ids": [
       "0US"
     ],
+    "line_ids": [
+      "5QS5",
+      "GGFZ",
+      "RTUB",
+      "19PY",
+      "WD7H",
+      "L933",
+      "RMSV",
+      "SU79",
+      "FB5Q",
+      "H9TT"
+    ],
     "confidence": "high",
     "score": 0.975,
     "margin": 0.498,
     "ang": 673,
-    "ang_delta": 0
+    "ang_delta": 0,
+    "counters": [
+      1,
+      1,
+      2,
+      3,
+      4
+    ]
   },
   "dsg": {
     "shabad_ids": [
       "2PZ",
       "Y0J"
     ],
+    "line_ids": [
+      "VUSS",
+      "2GG2",
+      "U407",
+      "QKF2",
+      "REBQ",
+      "RJZH"
+    ],
     "confidence": "high",
     "score": 1,
     "margin": 0.458,
     "ang": 441,
-    "ang_delta": 3
+    "ang_delta": 3,
+    "counters": [
+      1419,
+      1420
+    ]
   },
   "corpus": {
     "name": "@shabados/database",
     "version": "4.8.7"
-  },
-  "generated_at": "2026-08-29T04:15:54.063Z"
+  }
 }

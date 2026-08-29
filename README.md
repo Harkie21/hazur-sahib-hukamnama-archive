@@ -36,8 +36,8 @@ curl https://raw.githubusercontent.com/Harkie21/hazur-sahib-hukamnama-archive/ma
     "score": 1.0,
     "margin": 0.588,
     "ang": 711,
-    "counter": 2,
-    "ang_delta": 0
+    "ang_delta": 0,
+    "counters": [2]
   },
   "dsg": {
     "shabad_ids": ["5DB"],
@@ -46,11 +46,10 @@ curl https://raw.githubusercontent.com/Harkie21/hazur-sahib-hukamnama-archive/ma
     "score": 0.837,
     "margin": 0.475,
     "ang": 446,
-    "counter": 1472,
-    "ang_delta": 2
+    "ang_delta": 2,
+    "counters": [1472]
   },
-  "corpus": { "name": "@shabados/database", "version": "4.8.7" },
-  "generated_at": "2026-08-26T23:34:12.004Z"
+  "corpus": { "name": "@shabados/database", "version": "4.8.7" }
 }
 ```
 

@@ -24,6 +24,7 @@ const fs = require('fs')
 const path = require('path')
 const { Resolver, SOURCE_SGGS } = require('../lib/resolve')
 const { parseJson, NoHukamnamaError } = require('../lib/scrape')
+const { pack } = require('../lib/pack')
 
 const DB_PATH = process.env.SHABADOS_DB
   || 'node_modules/@shabados/database/build/database.sqlite'
@@ -47,20 +48,6 @@ function cachedDates() {
     }
   }
   return out.sort()
-}
-
-function pack(r) {
-  if (!r) return null
-  return {
-    shabad_ids: r.ok ? r.shabad_ids : [],
-    line_ids: r.ok ? (r.line_ids || []) : [],
-    confidence: r.confidence,
-    score: r.score ?? null,
-    margin: r.margin ?? null,
-    ang: r.ang_scraped ?? null,
-    ang_delta: r.ang_delta ?? null,
-    counters: r.counters ?? [],
-  }
 }
 
 function main() {

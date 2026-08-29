@@ -14,26 +14,12 @@ const fs = require('fs')
 const path = require('path')
 const { Resolver, SOURCE_SGGS, SOURCE_DSG } = require('../lib/resolve')
 const { fetchToday, todayIST } = require('../lib/scrape')
+const { pack } = require('../lib/pack')
 
 const DB_PATH = process.env.SHABADOS_DB
   || 'node_modules/@shabados/database/build/database.sqlite'
 const CORPUS_VERSION = process.env.SHABADOS_VERSION || '4.8.7'
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || path.join(__dirname, '..', 'archive')
-
-function pack(result) {
-  if (!result) return null
-  const out = {
-    shabad_ids: result.ok ? result.shabad_ids : [],
-    confidence: result.confidence,
-    score: result.score ?? null,
-    margin: result.margin ?? null,
-    ang: result.ang_scraped ?? null,
-  }
-  if (result.counter != null) out.counter = result.counter
-  if (result.ang_delta != null) out.ang_delta = result.ang_delta
-  if (!result.ok) out.reason = result.reason || 'below_threshold'
-  return out
-}
 
 async function main() {
   if (!fs.existsSync(DB_PATH)) {
@@ -70,7 +56,6 @@ async function main() {
     sggs: pack(results.sggs),
     dsg: pack(results.dsg),
     corpus: { name: '@shabados/database', version: CORPUS_VERSION },
-    generated_at: new Date().toISOString(),
   }
 
   const [ y, m, d ] = date.split('-')

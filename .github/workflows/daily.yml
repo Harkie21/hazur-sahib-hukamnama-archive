@@ -6,6 +6,13 @@ on:
     # site to publish. GitHub cron is best-effort and may run late; that is
     # fine, the file only needs to exist before readers wake up.
     - cron: '30 23 * * *'
+    # 11:00 IST retry. Observed lag on the primary schedule has run 5-7 hours
+    # late, well past GitHub's usual 30-60 min slip. fetch-today.js writes no
+    # per-run timestamp, so if the first run already succeeded this reproduces
+    # the same file byte-for-byte and the commit step's `git diff --staged
+    # --quiet` guard makes it a true no-op; a skipped day is not harmless,
+    # since nothing backfills it.
+    - cron: '30 05 * * *'
   workflow_dispatch:
 
 concurrency:

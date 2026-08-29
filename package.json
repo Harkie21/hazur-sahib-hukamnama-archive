@@ -9,7 +9,7 @@
   },
   "scripts": {
     "fetch": "node bin/fetch-today.js",
-    "test": "node test/resolve.test.js && node test/bench.js"
+    "test": "node test/resolve.test.js && node test/pack.test.js && node test/bench.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
