@@ -1,0 +1,33 @@
+{
+  "date": "2026-08-29",
+  "source": "hazur_sahib",
+  "shabad_ids": [
+    "0US"
+  ],
+  "sggs": {
+    "shabad_ids": [
+      "0US"
+    ],
+    "confidence": "high",
+    "score": 0.975,
+    "margin": 0.498,
+    "ang": 673,
+    "ang_delta": 0
+  },
+  "dsg": {
+    "shabad_ids": [
+      "2PZ",
+      "Y0J"
+    ],
+    "confidence": "high",
+    "score": 1,
+    "margin": 0.458,
+    "ang": 441,
+    "ang_delta": 3
+  },
+  "corpus": {
+    "name": "@shabados/database",
+    "version": "4.8.7"
+  },
+  "generated_at": "2026-08-29T04:15:54.063Z"
+}
