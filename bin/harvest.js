@@ -28,6 +28,7 @@ const fs = require('fs')
 const path = require('path')
 const { Resolver, SOURCE_SGGS } = require('../lib/resolve')
 const { fetchJsonForDate, parseJson, NoHukamnamaError } = require('../lib/scrape')
+const { cachePath, writeCache } = require('../lib/cache')
 
 const DB_PATH = process.env.SHABADOS_DB
   || 'node_modules/@shabados/database/build/database.sqlite'
@@ -38,7 +39,6 @@ const DELAY_MS = Number(process.env.DELAY_MS || 2500)
 const MAX_RETRIES = 3
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
-const cachePath = d => path.join(CACHE_DIR, d.slice(0, 4), `${d}.json`)
 
 function* eachDate(from, to) {
   const end = new Date(to)
@@ -53,7 +53,7 @@ function* eachDate(from, to) {
  * so we never re-ask for a date the gurdwara simply didn't publish.
  */
 async function getRaw(dateISO) {
-  const cp = cachePath(dateISO)
+  const cp = cachePath(CACHE_DIR, dateISO)
   if (fs.existsSync(cp)) {
     return { raw: fs.readFileSync(cp, 'utf8'), fromCache: true }
   }
@@ -62,8 +62,7 @@ async function getRaw(dateISO) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const raw = await fetchJsonForDate(dateISO)
-      fs.mkdirSync(path.dirname(cp), { recursive: true })
-      fs.writeFileSync(cp, raw)
+      writeCache(CACHE_DIR, dateISO, raw)
       return { raw, fromCache: false }
     } catch (err) {
       lastErr = err

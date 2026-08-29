@@ -150,6 +150,8 @@ Politeness: requests are spaced 2.5 seconds apart, and the session cookie is reu
 
 IDs are resolved against `@shabados/database@4.8.7` and every file records the version used. Shabad OS has signalled a v5 rewrite with a new schema and possible identifier changes; **if that lands, regenerate from `cache/` rather than remapping IDs by hand** — that's ~13 minutes with `bin/build-archive.js` and no network requests. Clients should read `corpus.version` rather than assuming.
 
+`bin/fetch-today.js` (the daily job) does not write to `cache/` — it runs on an ephemeral GitHub Actions runner, so anything it wrote there would be discarded when the job ends, and `cache/` can't be committed since it holds Hazur Sahib's full text and translations, not just the shabad IDs the project publishes. So the days it has published since the last `bin/harvest.js` backfill are uncached. Before a corpus remap, run `bin/harvest.js` over that uncached range first, then `bin/build-archive.js`. This is a manual migration step, not something the daily job should attempt itself.
+
 ## Licensing
 
 Three separate layers — worth keeping distinct:
