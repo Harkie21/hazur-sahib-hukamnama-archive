@@ -25,6 +25,7 @@ const path = require('path')
 const { Resolver, SOURCE_SGGS } = require('../lib/resolve')
 const { parseJson, NoHukamnamaError } = require('../lib/scrape')
 const { pack } = require('../lib/pack')
+const { datedPath, serialize, writeLatest } = require('../lib/write')
 
 const DB_PATH = process.env.SHABADOS_DB
   || 'node_modules/@shabados/database/build/database.sqlite'
@@ -64,6 +65,7 @@ function main() {
   let written = 0, skippedEmpty = 0, broken = 0, changed = 0
   const conf = { high: 0, medium: 0, low: 0 }
   const log = DRY ? null : fs.createWriteStream(RESULTS, { flags: 'w' })
+  let latestPayload = null
 
   for (const date of dates) {
     const raw = fs.readFileSync(path.join(CACHE_DIR, date.slice(0, 4), `${date}.json`), 'utf8')
@@ -117,9 +119,8 @@ function main() {
       corpus: { name: '@shabados/database', version: CORPUS_VERSION },
     }
 
-    const [ y, m, d ] = date.split('-')
-    const file = path.join(ARCHIVE_DIR, y, m, `${d}.json`)
-    const next = JSON.stringify(payload, null, 2) + '\n'
+    const file = datedPath(ARCHIVE_DIR, date)
+    const next = serialize(payload)
 
     if (fs.existsSync(file)) {
       const prev = fs.readFileSync(file, 'utf8')
@@ -140,8 +141,11 @@ function main() {
       fs.writeFileSync(file, next)
     }
     written++
+    // dates is sorted ascending, so the last payload built is the newest.
+    latestPayload = payload
   }
 
+  if (!DRY && latestPayload) writeLatest(ARCHIVE_DIR, latestPayload)
   if (log) log.end()
   console.error(`\n=== build summary ===`)
   console.error(`archive files ${DRY ? 'that would be written' : 'written'}: ${written}`)

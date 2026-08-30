@@ -16,6 +16,16 @@ Coverage: **2022-01-07 to present**, ~1,666 files.
 
 Files are served straight off GitHub's CDN. There is no server, no API key, and no rate limit worth worrying about.
 
+`archive/latest.json` always holds the most recently published day, so a client that just wants "the current hukamnama" doesn't need to construct today's date or handle a 404 for a day that hasn't published yet:
+
+```
+https://raw.githubusercontent.com/Harkie21/hazur-sahib-hukamnama-archive/main/archive/latest.json
+```
+
+**Check the `date` field rather than assuming it is today.** The cron can run hours late, and some days publish nothing at all — `latest.json` then still points at the last day that *did* resolve, rather than being empty or missing, but that means `date` can be yesterday's or older.
+
+Individual days are addressable directly:
+
 ```
 https://raw.githubusercontent.com/Harkie21/hazur-sahib-hukamnama-archive/main/archive/YYYY/MM/DD.json
 ```
