@@ -1,8 +1,10 @@
 'use strict'
 
 const assert = require('assert')
+const Database = require('better-sqlite3')
+const { toUnicode } = require('gurmukhi-utils')
 const {
-  Resolver, canon, splitLines, extractAng, extractCounters,
+  Resolver, canon, splitLines, extractAng, extractCounters, THRESHOLDS,
 } = require('../lib/resolve')
 const { parsePage, parseJson, toSiteDateFormat } = require('../lib/scrape')
 const fixtures = require('./fixtures.json')
@@ -137,6 +139,83 @@ check('garbage refuses rather than guessing', () => {
   const r = R.resolve('', 'ਕ ਖ ਗ ਘ ਙ ਚ ਛ ਜ ਝ ਞ ਟ ਠ ਡ ਢ ਣ ਤ ਥ ਦ ਧ ਨ ਪ ਫ ਬ ਭ ਮ', 1)
   assert.ok(!r.ok, `should not resolve: ${JSON.stringify(r)}`)
   assert.strictEqual(r.confidence, 'low')
+})
+
+console.log('\nduplicate passages (bench.js caught YLS resolving to K26)')
+// ਗੁਰਦੇਵ ਮਾਤਾ appears twice in Guru Granth Sahib: YLS opens Bavan Akhri at ang
+// 262 and K26 closes it at ang 250. The two saloks differ by three characters
+// out of ~390, so text alone is a perfect tie and cannot choose between them.
+// The bad resolution scored 1.000 with margin 0.000 and ang_delta +12, and was
+// graded high because counter 1 — which sits on 6,043 Guru Granth lines —
+// counted as agreement and waved it past the margin gate.
+const db = new Database(DB_PATH, { readonly: true })
+const linesFor = db.prepare(
+  'SELECT gurmukhi, source_page FROM lines WHERE shabad_id = ? ORDER BY order_id'
+)
+const GURMUKHI = '੦੧੨੩੪੫੬੭੮੯'
+const gurmukhiNum = n => String(n).split('').map(d => GURMUKHI[+d]).join('')
+
+/** Nanded-style input rebuilt from the corpus, so no Gurbani text is committed. */
+function fromCorpus(shabadId, ang) {
+  const rows = linesFor.all(shabadId)
+  assert.ok(rows.length, `${shabadId} missing from the corpus`)
+  const bani = rows.map(r => toUnicode(r.gurmukhi)).join(' ').replace(/[;,]/g, '  ')
+  return `${bani} ਅੰਗ-${gurmukhiNum(ang ?? rows[0].source_page)}`
+}
+
+for (const [ id, twin ] of [ [ 'YLS', 'K26' ], [ 'K26', 'YLS' ] ]) {
+  check(`${id} never resolves confidently to its duplicate ${twin}`, () => {
+    const r = R.resolve('', fromCorpus(id), 1)
+    assert.ok(!r.shabad_ids.includes(twin),
+      `picked the duplicate: ${JSON.stringify(r)}`)
+    assert.ok(!r.ok || r.shabad_ids.includes(id),
+      `confident but wrong: ${JSON.stringify(r)}`)
+  })
+}
+check('an exact tie is broken towards the ang that was cited', () => {
+  const r = R.resolve('', fromCorpus('YLS'), 1)
+  assert.deepStrictEqual(r.shabad_ids, [ 'YLS' ], JSON.stringify(r))
+  assert.strictEqual(r.ang_delta, 0, JSON.stringify(r))
+})
+check('a Guru Granth counter of 1 cannot stand in for margin', () => {
+  const r = R.resolve('', fromCorpus('YLS'), 1)
+  assert.ok(r.counter_agrees, 'counter 1 is present and found')
+  assert.ok(r.counter_lines > 1000, `expected a worthless counter, got ${r.counter_lines}`)
+  assert.strictEqual(r.counter_discriminates, false, JSON.stringify(r))
+})
+check('a near-unique Dasam Granth counter still earns the override', () => {
+  const c = fixtures.cases.find(x => x.date === '2026-08-26' && x.source_id === 2)
+  const r = R.resolve(c.heading, c.bani, 2)
+  assert.strictEqual(r.counter_lines, 1, `1472 should be unique: ${JSON.stringify(r)}`)
+  assert.ok(r.counter_discriminates, JSON.stringify(r))
+})
+check('SGGS vetoes a reading cited well past the shabad it matched', () => {
+  // PLN sits wholly on ang 711. +12 was the delta the bad YLS/K26 resolution
+  // reported, and is well inside the +/-50 bound both granths share.
+  const r = R.resolve('', fromCorpus('PLN', 723), 1)
+  assert.deepStrictEqual(r.shabad_ids, [ 'PLN' ], JSON.stringify(r))
+  assert.ok(!r.ok, `should be vetoed: ${JSON.stringify(r)}`)
+  assert.strictEqual(r.reason, 'ang_impossible', JSON.stringify(r))
+})
+check('DSG keeps the looser bound, since its pagination genuinely drifts', () => {
+  const c = fixtures.cases.find(x => x.date === '2026-08-26' && x.source_id === 2)
+  const r = R.resolve(c.heading, c.bani.replace('ਅੰਗ-੪੪੬', 'ਅੰਗ-੪੬੬'), 2)
+  assert.ok(r.ang_delta > THRESHOLDS.maxAngPastEndSggs, JSON.stringify(r))
+  assert.notStrictEqual(r.reason, 'ang_impossible', JSON.stringify(r))
+})
+check('the SGGS bound is measured against the reading\'s last ang', () => {
+  // A Guru Granth shabad may span several angs and the hukamnama may be cited
+  // from any of them, so the bound cannot be a flat delta from the start.
+  const wide = db.prepare(`
+    SELECT l.shabad_id id, MIN(l.source_page) a, MAX(l.source_page) b
+    FROM lines l JOIN shabads s ON s.id = l.shabad_id
+    WHERE s.source_id = 1 GROUP BY l.shabad_id
+    HAVING b - a >= 2 ORDER BY b - a DESC LIMIT 1
+  `).get()
+  const r = R.resolve('', fromCorpus(wide.id, wide.b), 1)
+  assert.ok(r.ang_delta > THRESHOLDS.maxAngPastEndSggs,
+    `fixture must exercise a delta past the flat bound, got ${r.ang_delta}`)
+  assert.notStrictEqual(r.reason, 'ang_impossible', JSON.stringify(r))
 })
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed')

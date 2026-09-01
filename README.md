@@ -75,11 +75,13 @@ Sri Dasam Granth is not published every day; treat the `dsg` block as optional.
 
 | Value | Meaning | What a client should do |
 |---|---|---|
-| `high` | score ≥ 0.90 and margin ≥ 0.30 | Link into your library |
-| `medium` | margin ≥ 0.15 and score ≥ 0.55 | Link, but worth logging |
-| `low` | anything else | `shabad_ids` is empty. Render nothing, or the source text read-only. **Never guess.** |
+| `high` | accepted, and 85% of the reading's lines matched at score ≥ 0.88, with every counter in the passage found | Link into your library |
+| `medium` | accepted on weaker evidence than that | Link, but worth logging |
+| `low` | not accepted | `shabad_ids` is empty. Render nothing, or the source text read-only. **Never guess.** |
 
-`margin` — the gap to the runner-up — is the load-bearing signal, not `score`. Edition differences depress absolute similarity fairly uniformly; they do not create rival candidates.
+A resolution is *accepted* when 60% of the reading's lines matched, the average score is ≥ 0.72, the ang veto did not fire, and either `margin` ≥ 0.25 or the passage carries a counter rare enough to anchor it on its own.
+
+`margin` — the gap to the runner-up — is the load-bearing signal, not `score`. Edition differences depress absolute similarity fairly uniformly; they do not create rival candidates. The thresholds themselves live in `THRESHOLDS` in `lib/resolve.js`, each with the measurement that set it.
 
 ### `line_ids`
 
@@ -104,9 +106,20 @@ An ang holds several shabads — 3 begin on SGGS ang 711, 8 touch ang 550 — so
 
 - **Both granths reject `|ang_delta| > 50`.** No edition disagrees by fifty pages, so a gap that large is ground truth that a match is wrong regardless of how well the text scores. Before this check was added, 36 such matches scored up to 1.000 and were graded `high`.
 - **SGGS only also rejects `ang_delta < -1`.** This follows from how the hukamnama is taken: the granth is opened, reading begins at the top of the left-hand page, and if a shabad is already in progress there the reader turns back to its heading. So a shabad's *start* ang is always at or before the ang cited on the page — a negative delta (start ang after the cited ang) cannot happen. Measured SGGS `ang_delta`: −24…+1, median 0, and the eleven `+1` days are exactly this rule firing correctly.
+- **SGGS only also rejects a cited ang more than 1 past the reading's *last* ang.** The mirror image of the rule above, and the same physical fact: the cited ang is a page the book was actually open at, so the reading cannot have ended well before it. Expressed against the last ang rather than as a flat delta because a Guru Granth shabad may span up to 9 angs and be cited from any of them. Across 1,668 published SGGS days, `cited − last ang` is −1 or 0 on 1,666 and `+1` on two (a shabad wholly on ang 614, cited as 615). The `+50` ceiling was far too loose upward for SGGS: it let a `+12` jump onto an unrelated page through.
 - **DSG is exempt from that floor.** Nanded's Dasam Granth paginates differently from Shabad OS, and the offset is not constant — measured range −41…+38. Both editions total 1,428 angs, so the drift starts at zero, ends at zero, and accumulates and unwinds across section boundaries in between. No fixed correction is applied; the chhand counter (`॥੧੪੭੨॥`) is the dependable Dasam Granth anchor.
 
 `ang_delta` (scraped − corpus) is recorded on every entry so the drift curve can be tracked over time.
+
+### The counter override has to earn its keep
+
+A passage's chhand counter can stand in for `margin` — but only when it actually narrows the field. In Sri Dasam Granth `੧੪੭੨`, `੧੫੯੬` and `੧੫੯੭` each sit on **one line** in the whole granth, which is why the override exists at all. In Guru Granth the counter `੧` sits on **6,043** lines and `੨` on 3,523; agreeing on one of those is not evidence of anything.
+
+So the override now requires the rarest counter in the passage to sit on **at most 8 lines** of that granth. Without this, a perfect tie between two textual duplicates — the `ਗੁਰਦੇਵ ਮਾਤਾ` salok, which both opens (`YLS`, ang 262) and closes (`K26`, ang 250) Bavan Akhri — scored 1.000 with `margin` 0.000 and was published as `high`.
+
+### Exact ties are broken by ang, not by luck
+
+Where the granth genuinely repeats itself, two corpus lines score *identically* and text cannot choose between them. The cited ang can, so a tie at exactly equal similarity goes to the candidate whose start ang is consistent with the ang on the page. This only ever picks between candidates that already scored the same, and it does not touch `margin` — a duplicate still has to clear the margin gate on its own, and is refused if it cannot. Refusing a tie is acceptable; guessing is not.
 
 ### Multi-shabad readings must be contiguous
 
@@ -120,6 +133,8 @@ A genuine multi-shabad hukamnama is adjacent in the granth — a vaar is salok +
 |---|---|---|---|
 | Guru Granth Sahib Ji | 1,626 (97.0%) | 41 | 10 |
 | Sri Dasam Granth | 1,563 (93.9%) | 79 | 22 |
+
+These counts are the archive **as published**. The counter-rarity gate demotes exactly one of them — 2025-09-24 Sri Dasam Granth, which leaned on counters `੩੫`/`੩੬`, carried by 71 and 68 lines — from `medium` to `low`. No published Guru Granth day relies on the override, and none has a cited ang past its reading's last ang, so neither new gate moves a Guru Granth row. The files on disk are unchanged until the archive is rebuilt from `cache/`.
 
 **4 resolutions (0.12%) are known-wrong, and all 4 are graded `low`.** Nothing incorrect reaches `high` or `medium`. The failure mode is refusal, not error — the correct behaviour for scripture. 13 days published nothing at all.
 
@@ -138,6 +153,12 @@ A genuine multi-shabad hukamnama is adjacent in the granth — a vaar is salok +
 npm ci
 npm install --no-save @shabados/database@4.8.7
 SHABADOS_DB=node_modules/@shabados/database/build/database.sqlite npm test
+```
+
+`test/bench.js` draws a **seeded** sample, so a green run means the same thing on every machine and every CI run. Sweep wider with `BENCH_SEED` and `BENCH_N`:
+
+```bash
+for seed in 1 2 3 4 5; do BENCH_SEED=$seed node test/bench.js; done
 ```
 
 The corpus is 152 MB unpacked and is **never committed** — CI installs it fresh each run, pinned.
