@@ -1,56 +1,56 @@
 {
-  "date": "2026-10-14",
+  "date": "2026-10-15",
   "source": "hazur_sahib",
   "shabad_ids": [
-    "PG7"
+    "TQU"
   ],
   "sggs": {
     "shabad_ids": [
-      "PG7"
+      "TQU"
     ],
     "line_ids": [
-      "BVNG",
-      "02P6",
-      "9X23",
-      "D5MT",
-      "RB4U",
-      "6AFW",
-      "181Z",
-      "KSJ5",
-      "F9PP",
-      "HRYX",
-      "E9T2",
-      "AXC0",
-      "YVTQ",
-      "PPMZ",
-      "366Y",
-      "T4HG",
-      "R5X9",
-      "U3XW"
+      "2MXC",
+      "3MDP",
+      "YCRN",
+      "V0QQ",
+      "Q1VY",
+      "LPHJ",
+      "WSQX",
+      "QAHU",
+      "ZGL1",
+      "RVBA"
     ],
     "confidence": "high",
-    "score": 1,
-    "margin": 0.403,
-    "ang": 664,
+    "score": 0.994,
+    "margin": 0.513,
+    "ang": 715,
     "ang_delta": 0,
     "counters": [
       1,
       2,
       3,
-      4
+      4,
+      16
     ]
   },
   "dsg": {
-    "shabad_ids": [],
-    "line_ids": [],
-    "confidence": "low",
-    "score": 1,
-    "margin": 0.095,
-    "ang": 113,
-    "ang_delta": -2,
+    "shabad_ids": [
+      "F25"
+    ],
+    "line_ids": [
+      "LC2A",
+      "UST7",
+      "DPAZ",
+      "M6CL"
+    ],
+    "confidence": "high",
+    "score": 0.964,
+    "margin": 0.576,
+    "ang": 76,
+    "ang_delta": -1,
     "counters": [
-      45,
-      46
+      29,
+      30
     ]
   },
   "corpus": {
