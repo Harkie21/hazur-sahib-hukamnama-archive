@@ -1,60 +1,68 @@
 {
-  "date": "2026-10-19",
+  "date": "2026-10-20",
   "source": "hazur_sahib",
   "shabad_ids": [
-    "0G7"
+    "AKG",
+    "J2R",
+    "DC8"
   ],
   "sggs": {
     "shabad_ids": [
-      "0G7"
+      "AKG",
+      "J2R",
+      "DC8"
     ],
     "line_ids": [
-      "EZWV",
-      "R3QT",
-      "5Y8Q",
-      "8XXB",
-      "BC3N",
-      "XVN9",
-      "BYV8",
-      "FGUH",
-      "5UQV",
-      "078Q"
+      "CYLM",
+      "1WB8",
+      "XBWB",
+      "KRLF",
+      "F41U",
+      "CDXJ",
+      "963T",
+      "VG9Y",
+      "7SYN",
+      "F4J5",
+      "H5Q0",
+      "UB4S",
+      "3C4U",
+      "5ER2"
     ],
     "confidence": "high",
-    "score": 1,
-    "margin": 0.524,
-    "ang": 677,
-    "ang_delta": 0,
+    "score": 0.99,
+    "margin": 0.383,
+    "ang": 646,
+    "ang_delta": 1,
     "counters": [
       1,
       2,
-      3,
-      4,
-      27
+      9
     ]
   },
   "dsg": {
     "shabad_ids": [
-      "CK3"
+      "BKM",
+      "FF6"
     ],
     "line_ids": [
-      "6226",
-      "A47W",
-      "0L9C",
-      "009R",
-      "JZ7Y",
-      "P16M",
-      "GEB1",
-      "QGVT"
+      "B7D9",
+      "7T6A",
+      "6C3E",
+      "DTKM",
+      "3BXE",
+      "89B3",
+      "F0Q6",
+      "8PJ8",
+      "YPD6"
     ],
     "confidence": "high",
-    "score": 0.978,
-    "margin": 0.467,
-    "ang": 118,
-    "ang_delta": -1,
+    "score": 0.983,
+    "margin": 0.442,
+    "ang": 223,
+    "ang_delta": -18,
     "counters": [
-      1,
-      2
+      398,
+      399
     ]
   },
   "corpus": {
