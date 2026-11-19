@@ -163,7 +163,7 @@ for seed in 1 2 3 4 5; do BENCH_SEED=$seed node test/bench.js; done
 
 The corpus is 152 MB unpacked and is **never committed** — CI installs it fresh each run, pinned.
 
-The daily job (`bin/fetch-today.js`) writes nothing on failure and exits non-zero, so the workflow goes red rather than publishing something wrong. A missing file is a clean 404; a wrong file is wrong Gurbani in front of someone.
+The daily job (`bin/fetch-today.js`) writes nothing on failure and exits non-zero, so the workflow goes red rather than publishing something wrong. A missing file is a clean 404; a wrong file is wrong Gurbani in front of someone. A day the site has not posted yet is `not_yet` and exits 0, except on the last scheduled run of the day (`FINAL_RUN=1`, the 05:30 UTC slot), where it goes red. Each request gets 60 seconds and is retried up to 3 times, 5, 15 and 45 seconds apart, on a timeout, a dropped connection or a 5xx.
 
 Politeness: requests are spaced 2.5 seconds apart, and the session cookie is reused across a run. This is a gurdwara's server, not a CDN.
 
@@ -171,7 +171,7 @@ Politeness: requests are spaced 2.5 seconds apart, and the session cookie is reu
 
 | Script | Purpose |
 |---|---|
-| `bin/fetch-today.js` | Daily job. Writes nothing on failure and exits non-zero. |
+| `bin/fetch-today.js` | Daily job. Writes nothing on failure and exits non-zero; a day not posted yet exits 0 unless `FINAL_RUN=1`. |
 | `bin/harvest.js` | Bulk fetch over a date range. Resumable. |
 | `bin/build-archive.js` | Rebuild the archive offline from `cache/`. Takes ~13 minutes. |
 | `bin/analyse.js` | Produces the confidence/ang-delta report. Instant, reads from disk. |

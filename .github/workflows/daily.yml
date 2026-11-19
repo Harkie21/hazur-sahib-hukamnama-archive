@@ -43,6 +43,9 @@ jobs:
         env:
           SHABADOS_DB: node_modules/@shabados/database/build/database.sqlite
           SHABADOS_VERSION: 4.8.7
+          # Only the last scheduled run goes red on a day not posted yet.
+          # Manual and dispatched runs are never final.
+          FINAL_RUN: ${{ github.event.schedule == '30 05 * * *' && '1' || '' }}
         run: node bin/fetch-today.js
 
       - name: Commit

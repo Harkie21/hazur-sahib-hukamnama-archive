@@ -61,7 +61,8 @@ async function getRaw(dateISO) {
   let lastErr
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const raw = await fetchJsonForDate(dateISO)
+      // This loop is the retry, so each try is a single attempt.
+      const raw = await fetchJsonForDate(dateISO, { delays: [] })
       writeCache(CACHE_DIR, dateISO, raw)
       return { raw, fromCache: false }
     } catch (err) {

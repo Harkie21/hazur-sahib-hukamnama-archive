@@ -18,7 +18,7 @@ const iso = d => d.toISOString().slice(0, 10)
 
 async function hasData(dateISO) {
   try {
-    const sections = await fetchForDate(dateISO)
+    const sections = await fetchForDate(dateISO, { delays: [] })
     return sections.length > 0
   } catch {
     return false
