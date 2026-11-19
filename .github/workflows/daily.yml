@@ -10,7 +10,8 @@ on:
     # schedule has run 5-7 hours late, well past GitHub's usual 30-60 min
     # slip. Once a run has written the day, later runs find the file and
     # return before any request; a skipped day is not harmless, since nothing
-    # backfills it.
+    # backfills it. A day written without its Dasam Granth half is asked again
+    # by every run before this slot and by this slot itself.
     - cron: '30 05 * * *'
   # Started every 15 minutes in the morning window from an outside timer.
   workflow_dispatch:

@@ -11,7 +11,9 @@
  * through. Both go red on the day's last scheduled run (FINAL_RUN=1). A
  * scheduled run (SCHEDULE set to its cron line) asks for its slot's IST day,
  * so a slot GitHub starts after IST midnight still judges the day it was
- * meant for. A day already in the archive is left alone, with no request.
+ * meant for. A day already in the archive is left alone, with no request,
+ * unless its Dasam Granth half is missing: then each run up to the final slot
+ * asks again and fills only dsg, and a DSG still missing is never a failure.
  * Writes NOTHING on failure — a missing file is a clean 404 the client
  * already handles; a wrong file is wrong Gurbani in front of someone.
  */
@@ -27,6 +29,16 @@ const DB_PATH = process.env.SHABADOS_DB
   || 'node_modules/@shabados/database/build/database.sqlite'
 const CORPUS_VERSION = process.env.SHABADOS_VERSION || '4.8.7'
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || path.join(__dirname, '..', 'archive')
+
+// The cron line daily.yml marks FINAL_RUN which a test keeps in step.
+const FINAL_SLOT = '30 05 * * *'
+
+/** The final slot's instant on the IST day `date`, after which only the final run asks for a missing dsg. */
+function finalSlotTime(date) {
+  const [ minute, hour ] = FINAL_SLOT.split(' ').map(Number)
+  const [ y, m, d ] = date.split('-').map(Number)
+  return Date.UTC(y, m - 1, d, hour, minute)
+}
 
 // Pure and side-effect free so a failed SGGS resolution never reaches a
 // write call — buildPayload throws before run() gets anywhere near
@@ -70,8 +82,13 @@ async function run({
   // Every run after the day is written would otherwise ask the gurdwara's
   // server again for a file it already has.
   if (fs.existsSync(file)) {
-    log(`already_have ${date}`)
-    return 0
+    const prev = JSON.parse(fs.readFileSync(file, 'utf8'))
+    const mayAsk = env.FINAL_RUN === '1' || now() < finalSlotTime(date)
+    if (prev.dsg != null || !mayAsk) {
+      log(`already_have ${date}`)
+      return 0
+    }
+    return fillDsg({ date, prev, fetchSections, resolver: makeResolver(), archiveDir, log })
   }
 
   // Before any request, so a wrong SHABADOS_DB goes red on every run.
@@ -91,13 +108,7 @@ async function run({
 
   const results = {}
   for (const section of sections) {
-    const r = resolver.resolve(section.heading, section.bani, section.source_id)
-    results[section.source_id === SOURCE_SGGS ? 'sggs' : 'dsg'] = r
-    log(
-      `${date}\t${section.source_id === SOURCE_SGGS ? 'SGGS' : 'DSG '}\t` +
-      `${(r.shabad_ids || []).join('+') || '-'}\tscore=${r.score}\tmargin=${r.margin}\t` +
-      `ang=${r.ang_scraped}/${r.ang_corpus}\tΔ=${r.ang_delta}\t${r.confidence}`
-    )
+    results[section.source_id === SOURCE_SGGS ? 'sggs' : 'dsg'] = resolveSection(resolver, date, section, log)
   }
 
   // SGGS is the load-bearing half. If it did not resolve, treat the day as a
@@ -121,6 +132,57 @@ async function run({
   return 0
 }
 
+function resolveSection(resolver, date, section, log) {
+  const r = resolver.resolve(section.heading, section.bani, section.source_id)
+  log(
+    `${date}\t${section.source_id === SOURCE_SGGS ? 'SGGS' : 'DSG '}\t` +
+    `${(r.shabad_ids || []).join('+') || '-'}\tscore=${r.score}\tmargin=${r.margin}\t` +
+    `ang=${r.ang_scraped}/${r.ang_corpus}\tΔ=${r.ang_delta}\t${r.confidence}`
+  )
+  return r
+}
+
+/**
+ * Asks again for a written day whose DSG half was not posted yet and replaces only dsg.
+ * The published Guru Granth half is never rewritten, so a reader never sees it change.
+ */
+async function fillDsg({ date, prev, fetchSections, resolver, archiveDir, log }) {
+  let sections
+  try {
+    sections = await fetchSections(date)   // throws LayoutChangedError
+  } catch (err) {
+    // The site skips Dasam Granth on some days so a missing half is never red.
+    if (err instanceof NoHukamnamaError) log(`dsg_not_yet ${date}`)
+    else if (isUnavailable(err)) log(`dsg_unavailable ${date} ${err.message}`)
+    else throw err
+    return 0
+  }
+  const dsgSection = sections.find(s => s.source_id === SOURCE_DSG)
+  if (!dsgSection) {
+    log(`dsg_not_yet ${date}`)
+    return 0
+  }
+  const sggsSection = sections.find(s => s.source_id === SOURCE_SGGS)
+  const sggs = sggsSection ? pack(resolveSection(resolver, date, sggsSection, log)) : null
+  if (JSON.stringify(sggs) !== JSON.stringify(prev.sggs)) {
+    log(`WARNING: ${date} already published as ${JSON.stringify(prev.shabad_ids)}, now ${JSON.stringify(sggs ? sggs.shabad_ids : null)}, kept as published`)
+  }
+  const dsg = pack(resolveSection(resolver, date, dsgSection, log))
+
+  // Read before any write so an unreadable latest.json leaves nothing half written.
+  const latestFile = path.join(archiveDir, 'latest.json')
+  const latest = fs.existsSync(latestFile) ? JSON.parse(fs.readFileSync(latestFile, 'utf8')) : null
+
+  writeDay(archiveDir, { ...prev, dsg })
+  log(`filled_dsg ${date}`)
+  // A later day in latest.json stays as that day published it.
+  if (latest && latest.date === date && latest.dsg == null) {
+    writeLatest(archiveDir, { ...latest, dsg })
+    log(`filled_dsg ${date} in latest.json`)
+  }
+  return 0
+}
+
 if (require.main === module) {
   run().then(code => process.exit(code), err => {
     console.error(`FAILED: ${err.message}`)
@@ -128,4 +190,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { buildPayload, run }
+module.exports = { buildPayload, run, FINAL_SLOT }

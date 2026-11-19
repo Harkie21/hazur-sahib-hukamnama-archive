@@ -8,8 +8,9 @@ const {
   withRetry, isTransient, isUnavailable, readWhole, parseJson, parseJsonForDate, slotDayIST,
   NoHukamnamaError, ServerUnavailableError, LayoutChangedError, REQUEST_TIMEOUT_MS,
 } = require('../lib/scrape')
-const { run } = require('../bin/fetch-today')
-const { SOURCE_SGGS } = require('../lib/resolve')
+const { run, FINAL_SLOT } = require('../bin/fetch-today')
+const { SOURCE_SGGS, SOURCE_DSG } = require('../lib/resolve')
+const { pack } = require('../lib/pack')
 
 let failures = 0
 const queue = []
@@ -103,13 +104,19 @@ const OK_RESULT = {
   ok: true, shabad_ids: [ 'PLN' ], line_ids: [ 'ABCD' ], confidence: 'high',
   score: 1.0, margin: 0.588, ang_scraped: 711, ang_delta: 0, counters: [ 2 ],
 }
+const DSG_RESULT = {
+  ok: true, shabad_ids: [ 'D7K' ], line_ids: [ 'Q1W2' ], confidence: 'high',
+  score: 0.97, margin: 0.41, ang_scraped: 1201, ang_delta: 0, counters: [ 1 ],
+}
 const SECTIONS = [ { source_id: SOURCE_SGGS, heading: 'h', bani: 'b' } ]
+const BOTH = [ ...SECTIONS, { source_id: SOURCE_DSG, heading: 'dh', bani: 'db' } ]
+const byGranth = (sggs = OK_RESULT) => () => ({ resolve: (h, b, id) => id === SOURCE_DSG ? DSG_RESULT : sggs })
 const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'hazur-fetch-test-'))
 const files = dir => fs.readdirSync(dir, { recursive: true }).filter(f => f.endsWith('.json')).sort()
 
 function stubRun(dir, fetchSections, env = {}, {
   now = new Date('2026-11-18T01:00:00Z'),
-  makeResolver = () => ({ resolve: () => OK_RESULT }),
+  makeResolver = byGranth(),
 } = {}) {
   const asked = []
   const lines = []
@@ -151,13 +158,13 @@ check('a posted day is fetched for today\'s IST date and written', async () => {
   assert.deepStrictEqual(asked, [ '2026-11-18' ])
   assert.deepStrictEqual(files(dir), [ path.join('2026', '11', '18.json'), 'latest.json' ])
 })
-check('a day already written: exit 0 with no request and no corpus load', async () => {
+check('a day already written with dsg: exit 0 with no request and no corpus load', async () => {
   const dir = tmpDir()
-  await stubRun(dir, async () => SECTIONS).code
+  await stubRun(dir, async () => BOTH).code
   const before = fs.readFileSync(path.join(dir, '2026', '11', '18.json'), 'utf8')
   let loads = 0
-  const { code, asked, lines } = stubRun(dir, async () => SECTIONS, { FINAL_RUN: '1' }, {
-    makeResolver: () => { loads++; return { resolve: () => OK_RESULT } },
+  const { code, asked, lines } = stubRun(dir, async () => BOTH, { FINAL_RUN: '1' }, {
+    makeResolver: () => { loads++; return byGranth()() },
   })
   assert.strictEqual(await code, 0)
   assert.deepStrictEqual(asked, [])
@@ -248,6 +255,112 @@ check('an unreadable latest.json fails the run before any write', async () => {
   await assert.rejects(stubRun(dir, async () => SECTIONS).code, SyntaxError)
   assert.deepStrictEqual(files(dir), [ 'latest.json' ])
   assert.strictEqual(fs.readFileSync(path.join(dir, 'latest.json'), 'utf8'), '{ not json')
+})
+
+section('\nfilling a missing dsg')
+
+const dayFile = dir => path.join(dir, '2026', '11', '18.json')
+const read = file => fs.readFileSync(file, 'utf8')
+/** A day written by the 05:00 IST slot while the site had posted only the Guru Granth half. */
+async function sggsOnlyDay() {
+  const dir = tmpDir()
+  assert.strictEqual(await stubRun(dir, async () => SECTIONS).code, 0)
+  assert.strictEqual(JSON.parse(read(dayFile(dir))).dsg, null)
+  return dir
+}
+/** The file as it should read once filled: the null replaced by the dsg block and nothing else. */
+const filled = before => before.replace('"dsg": null', `"dsg": ${JSON.stringify(pack(DSG_RESULT), null, 2).replace(/\n/g, '\n  ')}`)
+
+check('before the final slot a missing dsg is filled and nothing else changes', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  const { code, asked, lines } = stubRun(dir, async () => BOTH, {}, { now: new Date('2026-11-18T05:29:59Z') })
+  assert.strictEqual(await code, 0)
+  assert.deepStrictEqual(asked, [ '2026-11-18' ])
+  assert.ok(lines.includes('filled_dsg 2026-11-18'))
+  assert.notStrictEqual(filled(before), before)
+  assert.strictEqual(read(dayFile(dir)), filled(before))
+  assert.strictEqual(read(path.join(dir, 'latest.json')), filled(before))
+  assert.deepStrictEqual(Object.keys(JSON.parse(read(dayFile(dir)))), Object.keys(JSON.parse(before)))
+})
+check('a latest.json already on a later day is left alone', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  const later = before.replace('"date": "2026-11-18"', '"date": "2026-11-19"')
+  fs.writeFileSync(path.join(dir, 'latest.json'), later)
+  assert.strictEqual(await stubRun(dir, async () => BOTH).code, 0)
+  assert.strictEqual(read(dayFile(dir)), filled(before))
+  assert.strictEqual(read(path.join(dir, 'latest.json')), later)
+})
+check('a site still showing only the Guru Granth half writes nothing and stays green', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  for (const env of [ {}, { FINAL_RUN: '1' } ]) {
+    const { code, lines } = stubRun(dir, async () => SECTIONS, env)
+    assert.strictEqual(await code, 0)
+    assert.deepStrictEqual(lines.filter(l => !l.includes('\t')), [ 'dsg_not_yet 2026-11-18' ])
+  }
+  assert.strictEqual(read(dayFile(dir)), before)
+  assert.strictEqual(read(path.join(dir, 'latest.json')), before)
+})
+check('not yet and unavailable stay green on the final run as well', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  const cases = [ [ notPosted, /^dsg_not_yet 2026-11-18$/ ], [ async () => { throw timeoutError() }, /^dsg_unavailable 2026-11-18 / ] ]
+  for (const [ fetchSections, line ] of cases) {
+    for (const env of [ {}, { FINAL_RUN: '1' } ]) {
+      const { code, lines } = stubRun(dir, fetchSections, env)
+      assert.strictEqual(await code, 0)
+      assert.match(lines[0], line)
+    }
+  }
+  assert.strictEqual(read(dayFile(dir)), before)
+})
+check('from the final slot on a dispatched run asks nothing', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  for (const now of [ '2026-11-18T05:30:00Z', '2026-11-18T09:00:00Z' ]) {
+    const { code, asked, lines } = stubRun(dir, async () => BOTH, { SCHEDULE: '' }, { now: new Date(now) })
+    assert.strictEqual(await code, 0)
+    assert.deepStrictEqual(asked, [])
+    assert.deepStrictEqual(lines, [ 'already_have 2026-11-18' ])
+  }
+  assert.strictEqual(read(dayFile(dir)), before)
+})
+check('a final slot starting late still asks and fills', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  const { code, asked } = stubRun(dir, async () => BOTH,
+    { FINAL_RUN: '1', SCHEDULE: FINAL_SLOT }, { now: new Date('2026-11-18T11:00:00Z') })
+  assert.strictEqual(await code, 0)
+  assert.deepStrictEqual(asked, [ '2026-11-18' ])
+  assert.strictEqual(read(dayFile(dir)), filled(before))
+})
+check('a refetched Guru Granth half that differs is warned about and never rewritten', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  const other = { ...OK_RESULT, shabad_ids: [ 'XYZ' ], line_ids: [ 'ZZZZ' ] }
+  const { code, lines } = stubRun(dir, async () => BOTH, {}, { makeResolver: byGranth(other) })
+  assert.strictEqual(await code, 0)
+  assert.ok(lines.some(l => /^WARNING: 2026-11-18 already published as \["PLN"\], now \["XYZ"\]/.test(l)), lines.join('\n'))
+  const after = JSON.parse(read(dayFile(dir)))
+  assert.deepStrictEqual(after.shabad_ids, [ 'PLN' ])
+  assert.deepStrictEqual(after.sggs, JSON.parse(before).sggs)
+  assert.strictEqual(read(dayFile(dir)), filled(before))
+})
+check('a layout change in the fill path still throws', async () => {
+  const dir = await sggsOnlyDay()
+  const before = read(dayFile(dir))
+  await assert.rejects(stubRun(dir, async () => { throw new LayoutChangedError('x') }, { FINAL_RUN: '1' }).code, /layout_changed/)
+  assert.strictEqual(read(dayFile(dir)), before)
+})
+check('the final slot is the cron line daily.yml marks final', () => {
+  const yml = read(path.join(__dirname, '..', '.github', 'workflows', 'daily.yml'))
+  const crons = [ ...yml.matchAll(/- cron: '([^']+)'/g) ].map(m => m[1])
+  assert.ok(crons.includes(FINAL_SLOT), crons.join(', '))
+  const finals = [ ...yml.matchAll(/github\.event\.schedule == '([^']+)'/g) ].map(m => m[1])
+  assert.strictEqual(finals.length, 2)
+  assert.deepStrictEqual([ ...new Set(finals) ], [ FINAL_SLOT ])
 })
 
 section('\nparse')
