@@ -248,6 +248,21 @@ const record = (over = {}) => ({ id: '1', granth_type: 'Guru Granth', date: '18-
 check('a record for the asked date is kept', () => {
   assert.strictEqual(parseJsonForDate(JSON.stringify([ record() ]), '2026-11-18').length, 1)
 })
+check('padded and unpadded dates both match', () => {
+  for (const date of [ '01-06-2026', '1-6-2026', '01-6-2026', '1-06-2026' ]) {
+    assert.strictEqual(parseJsonForDate(JSON.stringify([ record({ date }) ]), '2026-06-01').length, 1, date)
+  }
+})
+check('an unpadded date for another day is nothing published', () => {
+  assert.throws(() => parseJsonForDate(JSON.stringify([ record({ date: '31-5-2026' }) ]), '2026-06-01'),
+    e => e instanceof NoHukamnamaError)
+})
+check('a date not in DD-MM-YYYY is a layout change', () => {
+  for (const date of [ '2026-06-01', '01/06/2026', '01-06-26', 'June 1' ]) {
+    assert.throws(() => parseJsonForDate(JSON.stringify([ record({ date }) ]), '2026-06-01'),
+      e => e instanceof LayoutChangedError, date)
+  }
+})
 check('a record for another date is nothing published for the asked one', () => {
   assert.throws(() => parseJsonForDate(JSON.stringify([ record({ date: '17-11-2026' }) ]), '2026-11-18'),
     e => e instanceof NoHukamnamaError && /17-11-2026/.test(e.message))
