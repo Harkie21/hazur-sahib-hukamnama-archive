@@ -104,12 +104,14 @@ async function run({
   // failure rather than publishing a half-empty file. buildPayload throws.
   const payload = buildPayload(date, results, corpusVersion)
 
+  // Read before any write so an unreadable latest.json leaves nothing half written.
+  const latestFile = path.join(archiveDir, 'latest.json')
+  const latestDate = fs.existsSync(latestFile) ? JSON.parse(fs.readFileSync(latestFile, 'utf8')).date : ''
+
   writeDay(archiveDir, payload)
   log(`wrote ${path.relative(process.cwd(), file)}`)
 
   // A late slot can write an earlier day than latest.json already holds.
-  const latestFile = path.join(archiveDir, 'latest.json')
-  const latestDate = fs.existsSync(latestFile) ? JSON.parse(fs.readFileSync(latestFile, 'utf8')).date : ''
   if (latestDate > date) {
     log(`kept latest.json at ${latestDate}`)
     return 0

@@ -242,6 +242,14 @@ check('writing an earlier day never takes latest.json backwards', async () => {
   assert.strictEqual(fs.readFileSync(path.join(dir, 'latest.json'), 'utf8'), latest)
 })
 
+check('an unreadable latest.json fails the run before any write', async () => {
+  const dir = tmpDir()
+  fs.writeFileSync(path.join(dir, 'latest.json'), '{ not json')
+  await assert.rejects(stubRun(dir, async () => SECTIONS).code, SyntaxError)
+  assert.deepStrictEqual(files(dir), [ 'latest.json' ])
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'latest.json'), 'utf8'), '{ not json')
+})
+
 section('\nparse')
 
 const record = (over = {}) => ({ id: '1', granth_type: 'Guru Granth', date: '18-11-2026', heading: 'h', bani: 'b', ...over })
