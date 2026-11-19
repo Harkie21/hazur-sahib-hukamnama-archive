@@ -36,7 +36,11 @@ const CACHE_DIR = process.env.CACHE_DIR || path.join(__dirname, '..', 'cache')
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || path.join(__dirname, '..', 'archive')
 const RESULTS = path.join(__dirname, '..', 'harvest-results.jsonl')
 const DELAY_MS = Number(process.env.DELAY_MS || 2500)
-const MAX_RETRIES = 3
+// Backoff for timeouts, dropped connections and 5xx. A 4xx is an answer, not retried.
+const RETRY = {
+  delays: [ DELAY_MS * 3, DELAY_MS * 9 ],
+  log: msg => process.stderr.write(` [${msg}]`),
+}
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -48,8 +52,8 @@ function* eachDate(from, to) {
 }
 
 /**
- * Returns { raw, fromCache } or throws. Retries transient failures with
- * backoff; a genuine empty result is NOT an error and gets cached as such,
+ * Returns { raw, fromCache } or throws. The fetch retries transient failures
+ * with backoff; a genuine empty result is NOT an error and gets cached as such,
  * so we never re-ask for a date the gurdwara simply didn't publish.
  */
 async function getRaw(dateISO) {
@@ -58,23 +62,9 @@ async function getRaw(dateISO) {
     return { raw: fs.readFileSync(cp, 'utf8'), fromCache: true }
   }
 
-  let lastErr
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      // This loop is the retry, so each try is a single attempt.
-      const raw = await fetchJsonForDate(dateISO, { delays: [] })
-      writeCache(CACHE_DIR, dateISO, raw)
-      return { raw, fromCache: false }
-    } catch (err) {
-      lastErr = err
-      if (attempt < MAX_RETRIES) {
-        const wait = DELAY_MS * Math.pow(3, attempt)
-        process.stderr.write(` [retry ${attempt}/${MAX_RETRIES - 1} in ${wait / 1000}s]`)
-        await sleep(wait)
-      }
-    }
-  }
-  throw lastErr
+  const raw = await fetchJsonForDate(dateISO, RETRY)
+  writeCache(CACHE_DIR, dateISO, raw)
+  return { raw, fromCache: false }
 }
 
 function fmtDuration(ms) {

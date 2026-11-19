@@ -11,17 +11,20 @@
  *   node bin/probe-range.js 2015-01-01     # optional earliest date to test
  */
 
-const { fetchForDate } = require('../lib/scrape')
+const { fetchForDate, NoHukamnamaError } = require('../lib/scrape')
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const iso = d => d.toISOString().slice(0, 10)
 
+// Only an empty day is "no data". Any other error stops the probe, since a
+// failed request read as empty would send the search into the wrong half.
 async function hasData(dateISO) {
   try {
-    const sections = await fetchForDate(dateISO, { delays: [] })
+    const sections = await fetchForDate(dateISO)
     return sections.length > 0
-  } catch {
-    return false
+  } catch (err) {
+    if (err instanceof NoHukamnamaError) return false
+    throw err
   }
 }
 
