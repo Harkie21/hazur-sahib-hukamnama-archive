@@ -4,7 +4,10 @@ const assert = require('assert')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const { withRetry, isTransient, readWhole, NoHukamnamaError, LayoutChangedError, REQUEST_TIMEOUT_MS } = require('../lib/scrape')
+const {
+  withRetry, isTransient, isUnavailable, readWhole, parseJson, parseJsonForDate, slotDayIST,
+  NoHukamnamaError, ServerUnavailableError, LayoutChangedError, REQUEST_TIMEOUT_MS,
+} = require('../lib/scrape')
 const { run } = require('../bin/fetch-today')
 const { SOURCE_SGGS } = require('../lib/resolve')
 
@@ -104,18 +107,23 @@ const SECTIONS = [ { source_id: SOURCE_SGGS, heading: 'h', bani: 'b' } ]
 const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'hazur-fetch-test-'))
 const files = dir => fs.readdirSync(dir, { recursive: true }).filter(f => f.endsWith('.json')).sort()
 
-function stubRun(dir, fetchSections, env = {}) {
+function stubRun(dir, fetchSections, env = {}, {
+  now = new Date('2026-11-18T01:00:00Z'),
+  makeResolver = () => ({ resolve: () => OK_RESULT }),
+} = {}) {
   const asked = []
+  const lines = []
   const code = run({
     fetchSections: async date => { asked.push(date); return fetchSections(date) },
     today: () => '2026-11-18',
+    now: () => now.getTime(),
     env,
     archiveDir: dir,
-    makeResolver: () => ({ resolve: () => OK_RESULT }),
+    makeResolver,
     corpusVersion: '4.8.7',
-    log: () => {},
+    log: msg => lines.push(msg),
   })
-  return { code, asked }
+  return { code, asked, lines }
 }
 const notPosted = async () => { throw new NoHukamnamaError('empty array') }
 
@@ -142,6 +150,118 @@ check('a posted day is fetched for today\'s IST date and written', async () => {
   assert.strictEqual(await code, 0)
   assert.deepStrictEqual(asked, [ '2026-11-18' ])
   assert.deepStrictEqual(files(dir), [ path.join('2026', '11', '18.json'), 'latest.json' ])
+})
+check('a day already written: exit 0 with no request and no corpus load', async () => {
+  const dir = tmpDir()
+  await stubRun(dir, async () => SECTIONS).code
+  const before = fs.readFileSync(path.join(dir, '2026', '11', '18.json'), 'utf8')
+  let loads = 0
+  const { code, asked, lines } = stubRun(dir, async () => SECTIONS, { FINAL_RUN: '1' }, {
+    makeResolver: () => { loads++; return { resolve: () => OK_RESULT } },
+  })
+  assert.strictEqual(await code, 0)
+  assert.deepStrictEqual(asked, [])
+  assert.strictEqual(loads, 0)
+  assert.deepStrictEqual(lines, [ 'already_have 2026-11-18' ])
+  assert.strictEqual(fs.readFileSync(path.join(dir, '2026', '11', '18.json'), 'utf8'), before)
+})
+check('a missing corpus fails before any request', async () => {
+  const dir = tmpDir()
+  const { code, asked } = stubRun(dir, notPosted, {}, {
+    makeResolver: () => { throw new Error('corpus not found') },
+  })
+  await assert.rejects(code, /corpus not found/)
+  assert.deepStrictEqual(asked, [])
+})
+check('a site still down after the retries: exit 0, and 1 on the final run', async () => {
+  for (const err of [ timeoutError(), networkError(), new ServerUnavailableError('http_503') ]) {
+    const dir = tmpDir()
+    const down = async () => { throw err }
+    const quietRun = stubRun(dir, down)
+    assert.strictEqual(await quietRun.code, 0)
+    assert.match(quietRun.lines[0], /^unavailable /)
+    assert.strictEqual(await stubRun(dir, down, { FINAL_RUN: '1' }).code, 1)
+    assert.deepStrictEqual(files(dir), [])
+  }
+})
+check('any other fetch error still throws', async () => {
+  const dir = tmpDir()
+  await assert.rejects(stubRun(dir, async () => { throw new Error('http_404') }).code, /http_404/)
+  assert.deepStrictEqual(files(dir), [])
+})
+check('unavailable covers transient errors and a final 5xx only', () => {
+  assert.ok(isUnavailable(timeoutError()))
+  assert.ok(isUnavailable(new ServerUnavailableError('http_502')))
+  assert.ok(!isUnavailable(new Error('http_404')))
+  assert.ok(!isUnavailable(new LayoutChangedError('x')))
+})
+
+section('\nscheduled slot day')
+
+check('slotDayIST: the slot\'s IST day, however late the run starts', () => {
+  // 05:30 UTC is 11:00 IST; a start at 19:00 UTC is already 00:30 IST on the next day.
+  assert.strictEqual(slotDayIST('30 05 * * *', new Date('2026-11-17T19:00:00Z')), '2026-11-17')
+  assert.strictEqual(slotDayIST('30 05 * * *', new Date('2026-11-17T05:30:00Z')), '2026-11-17')
+  assert.strictEqual(slotDayIST('30 05 * * *', new Date('2026-11-18T04:00:00Z')), '2026-11-17')
+  // 23:30 UTC is 05:00 IST on the next day.
+  assert.strictEqual(slotDayIST('30 23 * * *', new Date('2026-11-17T23:40:00Z')), '2026-11-18')
+  assert.strictEqual(slotDayIST('30 23 * * *', new Date('2026-11-18T04:36:00Z')), '2026-11-18')
+})
+check('slotDayIST: null for a manual run or a non-daily line', () => {
+  for (const cron of [ undefined, '', '*/15 * * * *', '30 05 * * 1' ]) {
+    assert.strictEqual(slotDayIST(cron, new Date('2026-11-17T19:00:00Z')), null)
+  }
+})
+check('a late final slot after IST midnight asks for its own day and writes it', async () => {
+  const dir = tmpDir()
+  const { code, asked } = stubRun(dir, async () => SECTIONS,
+    { FINAL_RUN: '1', SCHEDULE: '30 05 * * *' }, { now: new Date('2026-11-17T19:00:00Z') })
+  assert.strictEqual(await code, 0)
+  assert.deepStrictEqual(asked, [ '2026-11-17' ])
+  assert.deepStrictEqual(files(dir), [ path.join('2026', '11', '17.json'), 'latest.json' ])
+})
+check('a late final slot still goes red when its own day never appeared', async () => {
+  const dir = tmpDir()
+  const { code, asked } = stubRun(dir, notPosted,
+    { FINAL_RUN: '1', SCHEDULE: '30 05 * * *' }, { now: new Date('2026-11-17T19:00:00Z') })
+  assert.strictEqual(await code, 1)
+  assert.deepStrictEqual(asked, [ '2026-11-17' ])
+})
+check('a dispatched run asks for today', async () => {
+  const { asked } = stubRun(tmpDir(), notPosted, { SCHEDULE: '' }, { now: new Date('2026-11-17T19:00:00Z') })
+  assert.deepStrictEqual(asked, [ '2026-11-18' ])
+})
+check('writing an earlier day never takes latest.json backwards', async () => {
+  const dir = tmpDir()
+  await stubRun(dir, async () => SECTIONS).code
+  const latest = fs.readFileSync(path.join(dir, 'latest.json'), 'utf8')
+  const { code } = stubRun(dir, async () => SECTIONS,
+    { FINAL_RUN: '1', SCHEDULE: '30 05 * * *' }, { now: new Date('2026-11-17T19:00:00Z') })
+  assert.strictEqual(await code, 0)
+  assert.ok(fs.existsSync(path.join(dir, '2026', '11', '17.json')))
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'latest.json'), 'utf8'), latest)
+})
+
+section('\nparse')
+
+const record = (over = {}) => ({ id: '1', granth_type: 'Guru Granth', date: '18-11-2026', heading: 'h', bani: 'b', ...over })
+check('a record for the asked date is kept', () => {
+  assert.strictEqual(parseJsonForDate(JSON.stringify([ record() ]), '2026-11-18').length, 1)
+})
+check('a record for another date is nothing published for the asked one', () => {
+  assert.throws(() => parseJsonForDate(JSON.stringify([ record({ date: '17-11-2026' }) ]), '2026-11-18'),
+    e => e instanceof NoHukamnamaError && /17-11-2026/.test(e.message))
+})
+check('a record with no date is a layout change', () => {
+  assert.throws(() => parseJsonForDate(JSON.stringify([ record({ date: undefined }) ]), '2026-11-18'),
+    e => e instanceof LayoutChangedError)
+})
+check('rows with no known granth_type are a layout change', () => {
+  assert.throws(() => parseJson(JSON.stringify([ record({ granth_type: 'Adi Granth' }), record({ granth_type: 'SGGS' }) ])),
+    e => e instanceof LayoutChangedError && /SGGS/.test(e.message))
+})
+check('a known granth with no bani is nothing published', () => {
+  assert.throws(() => parseJson(JSON.stringify([ record({ bani: '' }) ])), e => e instanceof NoHukamnamaError)
 })
 
 ;(async () => {

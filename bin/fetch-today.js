@@ -6,8 +6,12 @@
  * against the pinned Shabad OS corpus, writes archive/YYYY/MM/DD.json.
  *
  * Exits non-zero on any failure so the workflow goes red and mails you.
- * A day the site has not posted yet is "not yet", exit 0, except on the
- * day's last scheduled run (FINAL_RUN=1), where it goes red too.
+ * A day the site has not posted yet is "not yet", exit 0, and so is a site
+ * still slow or down once the retries run out, since a later run may get
+ * through. Both go red on the day's last scheduled run (FINAL_RUN=1). A
+ * scheduled run (SCHEDULE set to its cron line) asks for its slot's IST day,
+ * so a slot GitHub starts after IST midnight still judges the day it was
+ * meant for. A day already in the archive is left alone, with no request.
  * Writes NOTHING on failure — a missing file is a clean 404 the client
  * already handles; a wrong file is wrong Gurbani in front of someone.
  */
@@ -15,7 +19,7 @@
 const fs = require('fs')
 const path = require('path')
 const { Resolver, SOURCE_SGGS, SOURCE_DSG } = require('../lib/resolve')
-const { fetchForDate, todayIST, NoHukamnamaError } = require('../lib/scrape')
+const { fetchForDate, todayIST, slotDayIST, isUnavailable, NoHukamnamaError } = require('../lib/scrape')
 const { pack } = require('../lib/pack')
 const { datedPath, writeDay, writeLatest } = require('../lib/write')
 
@@ -54,25 +58,37 @@ function defaultResolver() {
 async function run({
   fetchSections = fetchForDate,
   today = todayIST,
+  now = Date.now,
   env = process.env,
   archiveDir = ARCHIVE_DIR,
   makeResolver = defaultResolver,
   corpusVersion = CORPUS_VERSION,
   log = msg => console.error(msg),
 } = {}) {
-  const date = today()
+  const date = slotDayIST(env.SCHEDULE, new Date(now())) ?? today()
+  const file = datedPath(archiveDir, date)
+  // Every run after the day is written would otherwise ask the gurdwara's
+  // server again for a file it already has.
+  if (fs.existsSync(file)) {
+    log(`already_have ${date}`)
+    return 0
+  }
+
+  // Before any request, so a wrong SHABADOS_DB goes red on every run.
+  const resolver = makeResolver()
   let sections
   try {
     sections = await fetchSections(date)   // throws LayoutChangedError
   } catch (err) {
-    if (!(err instanceof NoHukamnamaError)) throw err
-    // Before the site posts the day it answers with nothing, which is only a
-    // failure on the day's last scheduled run.
-    log(`not_yet ${err.message}`)
+    // Before the site posts the day it answers with nothing, and a slow or
+    // down site may answer a later run. Either is a failure only on the
+    // day's last scheduled run.
+    if (err instanceof NoHukamnamaError) log(`not_yet ${err.message}`)
+    else if (isUnavailable(err)) log(`unavailable ${err.message}`)
+    else throw err
     return env.FINAL_RUN === '1' ? 1 : 0
   }
 
-  const resolver = makeResolver()
   const results = {}
   for (const section of sections) {
     const r = resolver.resolve(section.heading, section.bani, section.source_id)
@@ -88,19 +104,18 @@ async function run({
   // failure rather than publishing a half-empty file. buildPayload throws.
   const payload = buildPayload(date, results, corpusVersion)
 
-  const file = datedPath(archiveDir, date)
-  if (fs.existsSync(file)) {
-    const prev = JSON.parse(fs.readFileSync(file, 'utf8'))
-    const prevIds = JSON.stringify(prev.shabad_ids)
-    if (prevIds !== JSON.stringify(payload.shabad_ids)) {
-      log(`WARNING: ${date} already published as ${prevIds}, now ${JSON.stringify(payload.shabad_ids)}`)
-    }
-  }
   writeDay(archiveDir, payload)
   log(`wrote ${path.relative(process.cwd(), file)}`)
 
+  // A late slot can write an earlier day than latest.json already holds.
+  const latestFile = path.join(archiveDir, 'latest.json')
+  const latestDate = fs.existsSync(latestFile) ? JSON.parse(fs.readFileSync(latestFile, 'utf8')).date : ''
+  if (latestDate > date) {
+    log(`kept latest.json at ${latestDate}`)
+    return 0
+  }
   writeLatest(archiveDir, payload)
-  log(`wrote ${path.relative(process.cwd(), path.join(archiveDir, 'latest.json'))}`)
+  log(`wrote ${path.relative(process.cwd(), latestFile)}`)
   return 0
 }
 

@@ -6,7 +6,7 @@ A daily record of which shabad was read as the Hukamnama at **Takht Sachkhand Sr
 
 ## What this is
 
-Hazur Sahib publishes its daily Hukamnama — from both Sri Guru Granth Sahib Ji and Sri Dasam Granth — as an ordinary web page, with no developer-facing endpoint. This repository reads that page once a day, works out **which shabad** it is, and records the identifier.
+Hazur Sahib publishes its daily Hukamnama — from both Sri Guru Granth Sahib Ji and Sri Dasam Granth — as an ordinary web page, with no developer-facing endpoint. This repository reads that page each morning until the day is posted, works out **which shabad** it is, and records the identifier.
 
 **No Gurbani text is stored or served here.** Only pointers. Clients look the shabad up in their own copy of the corpus.
 
@@ -163,7 +163,7 @@ for seed in 1 2 3 4 5; do BENCH_SEED=$seed node test/bench.js; done
 
 The corpus is 152 MB unpacked and is **never committed** — CI installs it fresh each run, pinned.
 
-The daily job (`bin/fetch-today.js`) writes nothing on failure and exits non-zero, so the workflow goes red rather than publishing something wrong. A missing file is a clean 404; a wrong file is wrong Gurbani in front of someone. A day the site has not posted yet is `not_yet` and exits 0, except on the last scheduled run of the day (`FINAL_RUN=1`, the 05:30 UTC slot), where it goes red. Each request gets 60 seconds and is retried up to 3 times, 5, 15 and 45 seconds apart, on a timeout, a dropped connection or a 5xx.
+The daily job (`bin/fetch-today.js`) writes nothing on failure and exits non-zero, so the workflow goes red rather than publishing something wrong. A missing file is a clean 404; a wrong file is wrong Gurbani in front of someone. A day already in the archive is left alone, with no request (`already_have`). A day the site has not posted yet is `not_yet`, and a site still slow or down after the retries is `unavailable`; both exit 0, except on the last scheduled run of the day (`FINAL_RUN=1`, the 05:30 UTC slot), where they go red. A scheduled run asks for its own slot's IST day (`SCHEDULE`), so a slot GitHub starts after IST midnight still judges the day it was meant for. Each request gets 60 seconds and is retried up to 3 times, 5, 15 and 45 seconds apart, on a timeout, a dropped connection or a 5xx.
 
 Politeness: requests are spaced 2.5 seconds apart, and the session cookie is reused across a run. This is a gurdwara's server, not a CDN.
 
@@ -171,7 +171,7 @@ Politeness: requests are spaced 2.5 seconds apart, and the session cookie is reu
 
 | Script | Purpose |
 |---|---|
-| `bin/fetch-today.js` | Daily job. Writes nothing on failure and exits non-zero; a day not posted yet exits 0 unless `FINAL_RUN=1`. |
+| `bin/fetch-today.js` | Daily job. Writes nothing on failure and exits non-zero; a day not posted yet, or a site still down after the retries, exits 0 unless `FINAL_RUN=1`. |
 | `bin/harvest.js` | Bulk fetch over a date range. Resumable. |
 | `bin/build-archive.js` | Rebuild the archive offline from `cache/`. Takes ~13 minutes. |
 | `bin/analyse.js` | Produces the confidence/ang-delta report. Instant, reads from disk. |
@@ -193,7 +193,7 @@ Three separate layers — worth keeping distinct:
 
 **The Hukamnama selection** — the choice of shabad on any given day belongs to Takht Sachkhand Sri Hazur Sahib. This project records that choice; it does not produce it.
 
-Scraping is limited to a single request per day with an identifying User-Agent.
+Scraping stops for the day once its file is written. Until then each run makes two requests (the landing page and the search), with an identifying User-Agent: dispatched runs every 15 minutes in the morning window, plus the two scheduled runs.
 
 ## Acknowledgments
 

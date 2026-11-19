@@ -6,17 +6,19 @@ on:
     # site to publish. GitHub cron is best-effort and may run late; that is
     # fine, the file only needs to exist before readers wake up.
     - cron: '30 23 * * *'
-    # 11:00 IST retry. Observed lag on the primary schedule has run 5-7 hours
-    # late, well past GitHub's usual 30-60 min slip. fetch-today.js writes no
-    # per-run timestamp, so if the first run already succeeded this reproduces
-    # the same file byte-for-byte and the commit step's `git diff --staged
-    # --quiet` guard makes it a true no-op; a skipped day is not harmless,
-    # since nothing backfills it.
+    # 11:00 IST retry and the day's final run. Observed lag on the primary
+    # schedule has run 5-7 hours late, well past GitHub's usual 30-60 min
+    # slip. Once a run has written the day, later runs find the file and
+    # return before any request; a skipped day is not harmless, since nothing
+    # backfills it.
     - cron: '30 05 * * *'
+  # Started every 15 minutes in the morning window from an outside timer.
   workflow_dispatch:
 
 concurrency:
-  group: daily
+  # A newer pending run replaces an older one in a group, so the final slot
+  # has its own and is never dropped.
+  group: daily-${{ github.event.schedule == '30 05 * * *' && 'final' || 'runs' }}
   cancel-in-progress: false
 
 permissions:
@@ -26,7 +28,10 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
+      # The branch tip when the run starts, not the commit it was queued on.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -46,6 +51,8 @@ jobs:
           # Only the last scheduled run goes red on a day not posted yet.
           # Manual and dispatched runs are never final.
           FINAL_RUN: ${{ github.event.schedule == '30 05 * * *' && '1' || '' }}
+          # The slot's own IST day, which a late run's clock may be past.
+          SCHEDULE: ${{ github.event.schedule }}
         run: node bin/fetch-today.js
 
       - name: Commit
@@ -56,6 +63,17 @@ jobs:
           if git diff --staged --quiet; then
             echo "no change"
           else
-            git commit -m "chore(archive): $(TZ=Asia/Kolkata date +%F)"
-            git push
+            # Named after the day written, which a late slot can put before today.
+            day=$(git diff --staged --name-only -- archive | sed -n 's#^archive/\([0-9]\{4\}\)/\([0-9]\{2\}\)/\([0-9]\{2\}\)\.json$#\1-\2-\3#p' | sort | tail -1)
+            [ -n "$day" ] || day=$(node -p "require('./archive/latest.json').date")
+            git commit -m "chore(archive): $day"
+            # A run in the other group may have pushed meanwhile. A new dated
+            # file never conflicts; on latest.json main's copy wins.
+            for attempt in 1 2 3; do
+              if git pull --rebase -X ours origin main && git push; then exit 0; fi
+              git rebase --abort 2>/dev/null || true
+              echo "push attempt $attempt failed"
+              sleep 5
+            done
+            exit 1
           fi
