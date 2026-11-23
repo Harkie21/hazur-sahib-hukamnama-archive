@@ -1,54 +1,53 @@
 {
-  "date": "2026-11-22",
+  "date": "2026-11-23",
   "source": "hazur_sahib",
   "shabad_ids": [
-    "FUF"
+    "XKS"
   ],
   "sggs": {
     "shabad_ids": [
-      "FUF"
+      "XKS"
     ],
     "line_ids": [
-      "WPZW",
-      "M4PX",
-      "ZJ1K",
-      "TS2K",
-      "9TAD",
-      "VSC2"
+      "LRJF",
+      "H7B2",
+      "DT6E",
+      "7KP1",
+      "3020",
+      "5F6A"
     ],
     "confidence": "high",
     "score": 1,
-    "margin": 0.54,
-    "ang": 713,
+    "margin": 0.474,
+    "ang": 681,
     "ang_delta": 0,
     "counters": [
       1,
-      1,
       2,
-      10
+      43
     ]
   },
   "dsg": {
     "shabad_ids": [
-      "K8Z",
-      "FTB"
+      "2PZ",
+      "Y0J"
     ],
     "line_ids": [
-      "L9XU",
-      "B0XW",
-      "JZ7M",
-      "YNT5",
-      "T9K0",
-      "5BF9"
+      "VUSS",
+      "2GG2",
+      "U407",
+      "QKF2",
+      "REBQ",
+      "RJZH"
     ],
     "confidence": "high",
-    "score": 0.972,
-    "margin": 0.575,
-    "ang": 445,
+    "score": 0.988,
+    "margin": 0.452,
+    "ang": 441,
     "ang_delta": 3,
     "counters": [
-      1457,
-      1458
+      1419,
+      1420
     ]
   },
   "corpus": {
