@@ -34,7 +34,28 @@
       6
     ]
   },
-  "dsg": null,
+  "dsg": {
+    "shabad_ids": [
+      "V7T",
+      "VBF"
+    ],
+    "line_ids": [
+      "YT91",
+      "S1ZX",
+      "0UCP",
+      "DSPC",
+      "DWJ5",
+      "V938"
+    ],
+    "confidence": "high",
+    "score": 0.973,
+    "margin": 0.46,
+    "ang": 703,
+    "ang_delta": 5,
+    "counters": [
+      242
+    ]
+  },
   "corpus": {
     "name": "@shabados/database",
     "version": "4.8.7"
