@@ -27,7 +27,25 @@
       2
     ]
   },
-  "dsg": null,
+  "dsg": {
+    "shabad_ids": [
+      "FG1"
+    ],
+    "line_ids": [
+      "G4A1",
+      "3G22",
+      "JD6X",
+      "HGE1"
+    ],
+    "confidence": "high",
+    "score": 0.951,
+    "margin": 0.586,
+    "ang": 430,
+    "ang_delta": 0,
+    "counters": [
+      1331
+    ]
+  },
   "corpus": {
     "name": "@shabados/database",
     "version": "4.8.7"
